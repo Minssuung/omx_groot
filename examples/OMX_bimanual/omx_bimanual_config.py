@@ -14,22 +14,33 @@
 # limitations under the License.
 
 # Embodiment config for dual ROBOTIS OpenManipulator-X (OMX-F) bimanual setup.
+# Based on minssuung/store_play_v2_en dataset (store_play task).
 #
 # Hardware:
 #   Left OMX-F  — /dev/omx_left_follower  (5 joints + gripper = 6 DOF)
 #   Right OMX-F — /dev/omx_right_follower (5 joints + gripper = 6 DOF)
 #   Total state/action dim: 12
 #
-# State/action layout:
-#   [0:5]   left_arm    (shoulder_pan, shoulder_lift, elbow_flex, wrist_flex, wrist_roll)
-#   [5:6]   left_gripper
-#   [6:11]  right_arm   (shoulder_pan, shoulder_lift, elbow_flex, wrist_flex, wrist_roll)
-#   [11:12] right_gripper
+# State/action layout (matches runner_entry.py MOTOR_ORDER):
+#   [0]  left_shoulder_pan.pos
+#   [1]  left_shoulder_lift.pos
+#   [2]  left_elbow_flex.pos
+#   [3]  left_wrist_flex.pos
+#   [4]  left_wrist_roll.pos
+#   [5]  left_gripper.pos
+#   [6]  right_shoulder_pan.pos
+#   [7]  right_shoulder_lift.pos
+#   [8]  right_elbow_flex.pos
+#   [9]  right_wrist_flex.pos
+#   [10] right_wrist_roll.pos
+#   [11] right_gripper.pos
 #
-# Cameras:
-#   top        — top-down overhead view  (/dev/cam_top)
-#   wrist_left — left wrist egocentric   (/dev/cam_wrist_left)
-#   wrist_right — right wrist egocentric (/dev/cam_wrist_right)
+# Unit: LeRobot motor .pos (NOT radians — bypasses ROS to avoid unit mismatch with store_play_v2_en)
+#
+# Cameras (dataset keys):
+#   observation.images.top        — top-down overhead  (/dev/cam_top)
+#   observation.images.wrist_left — left wrist egocentric  (/dev/cam_wrist_left)
+#   observation.images.wrist_right — right wrist egocentric (/dev/cam_wrist_right)
 
 from gr00t.configs.data.embodiment_configs import register_modality_config
 from gr00t.data.embodiment_tags import EmbodimentTag
@@ -49,9 +60,9 @@ omx_bimanual_config = {
     "state": ModalityConfig(
         delta_indices=[0],
         modality_keys=[
-            "left_arm",
+            "left_arm",     # left_shoulder_pan/lift, elbow_flex, wrist_flex/roll (.pos)
             "left_gripper",
-            "right_arm",
+            "right_arm",    # right_shoulder_pan/lift, elbow_flex, wrist_flex/roll (.pos)
             "right_gripper",
         ],
     ),
@@ -64,20 +75,20 @@ omx_bimanual_config = {
             "right_gripper",
         ],
         action_configs=[
-            # arm joints: RELATIVE delta — better cross-embodiment generalization
-            ActionConfig(
-                rep=ActionRepresentation.RELATIVE,
-                type=ActionType.NON_EEF,
-                format=ActionFormat.DEFAULT,
-            ),
-            # gripper: ABSOLUTE target position
+            # store_play_v2_en은 절대 .pos 단위로 수집됨 — ABSOLUTE 사용.
+            # (ROS radian 우회해 LeRobot .pos 직결이므로 delta 변환 불필요)
             ActionConfig(
                 rep=ActionRepresentation.ABSOLUTE,
                 type=ActionType.NON_EEF,
                 format=ActionFormat.DEFAULT,
             ),
             ActionConfig(
-                rep=ActionRepresentation.RELATIVE,
+                rep=ActionRepresentation.ABSOLUTE,
+                type=ActionType.NON_EEF,
+                format=ActionFormat.DEFAULT,
+            ),
+            ActionConfig(
+                rep=ActionRepresentation.ABSOLUTE,
                 type=ActionType.NON_EEF,
                 format=ActionFormat.DEFAULT,
             ),
